@@ -137,8 +137,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const GEMINI_KEY = 'AIzaSyCzI1TvLNIrwwHt8md0tRsqFEm4USmXhq0';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+const CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
 
 const PUNTAJES = { excelente: 1.4, aprobado: 0.98, incompleto: 0 };
 const PUNTAJES_C6 = { excelente: 3, aprobado: 2.1, incompleto: 0 };
@@ -326,22 +325,20 @@ async function evaluateAll() {
     try {
       const b64 = toBase64(entry.data);
       const body = {
-        contents: [{
-          parts: [
-            { inline_data: { mime_type: 'application/pdf', data: b64 } },
-            { text: PROMPT }
-          ]
-        }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 800 }
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
+          { type: 'text', text: PROMPT }
+        ]}]
       };
-
-      const resp = await fetch(GEMINI_URL, {
+      const resp = await fetch(CLAUDE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
       const data = await resp.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      const text = data.content?.map(x => x.text || '').join('') || '{}';
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
 
