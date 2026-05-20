@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corrector — STEM y Robótica ETP</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f3; color: #1a1a1a; font-size: 15px; line-height: 1.6; }
+  .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 14px; margin-bottom: 2rem; }
+  .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }
+  .card-title { font-size: 13px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+  .drop-zone { border: 1.5px dashed #ccc; border-radius: 10px; padding: 2rem; text-align: center; cursor: pointer; background: #fafafa; transition: all 0.15s; }
+  .drop-zone:hover, .drop-zone.drag-over { background: #f0f0f0; border-color: #999; }
+  .drop-zone.loaded { border-style: solid; border-color: #4ade80; background: #f0fdf4; }
+  .drop-zone svg { display: block; margin: 0 auto 10px; color: #aaa; }
+  .drop-zone p { font-size: 14px; color: #666; }
+  .drop-zone .filename { font-size: 13px; color: #16a34a; margin-top: 4px; font-weight: 500; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: 1px solid #ddd; background: #fff; color: #1a1a1a; transition: all 0.15s; }
+  .btn:hover { background: #f5f5f3; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; width: 100%; justify-content: center; padding: 11px; font-size: 15px; }
+  .btn-primary:hover:not(:disabled) { background: #333; }
+  .btn-export { background: #fff; border-color: #ddd; }
+  .progress-bar { height: 6px; background: #e5e5e5; border-radius: 99px; overflow: hidden; margin: 10px 0; }
+  .progress-fill { height: 100%; background: #1a1a1a; border-radius: 99px; transition: width 0.3s; }
+  .progress-text { font-size: 13px; color: #666; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 10px; background: #f5f5f3; font-weight: 600; color: #444; border-bottom: 1px solid #e5e5e5; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .badge-excelente { background: #dcfce7; color: #166534; }
+  .badge-aprobado { background: #fef9c3; color: #854d0e; }
+  .badge-incompleto { background: #fee2e2; color: #991b1b; }
+  .badge-noentrego { background: #f0f0f0; color: #666; }
+  .score { font-weight: 700; font-size: 16px; }
+  .score-excelente { color: #16a34a; }
+  .score-aprobado { color: #ca8a04; }
+  .score-incompleto { color: #dc2626; }
+  .feedback-cell { color: #555; font-size: 12px; line-height: 1.5; max-width: 200px; }
+  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; background: #f0f0f0; color: #444; margin-right: 4px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .summary-card { background: #f5f5f3; border-radius: 10px; padding: 12px 14px; }
+  .summary-card .num { font-size: 24px; font-weight: 700; }
+  .summary-card .lbl { font-size: 12px; color: #666; margin-top: 2px; }
+  .alert { background: #fef9c3; border: 1px solid #fde047; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #713f12; margin-bottom: 1rem; }
+  .match-indicator { font-size: 11px; }
+  .match-ok { color: #16a34a; }
+  .match-miss { color: #dc2626; }
+  input[type=file] { display: none; }
+  details summary { cursor: pointer; font-size: 12px; color: #666; }
+  details[open] summary { margin-bottom: 6px; }
+  .overflow-x { overflow-x: auto; }
+  .step-num { width: 22px; height: 22px; border-radius: 50%; background: #1a1a1a; color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Corrector automático</h1>
+  <p class="subtitle">STEM y Robótica en la ETP — Evaluación de Trabajo Final</p>
+
+  <!-- PASO 1: ZIP -->
+  <div class="card">
+    <div class="card-title"><span class="step-num">1</span> Trabajos (ZIP de Moodle)</div>
+    <div class="drop-zone" id="dzZip" onclick="document.getElementById('inputZip').click()">
+      <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.632-8.664 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z"/></svg>
+      <p>Subir ZIP exportado de Moodle</p>
+      <p style="font-size:12px; color:#aaa; margin-top:2px;">Arrastrá o hacé clic</p>
+      <div class="filename" id="zipName" style="display:none"></div>
+    </div>
+    <input type="file" id="inputZip" accept=".zip" onchange="loadZip(this.files[0])">
+  </div>
+
+  <!-- PASO 2: EXCEL -->
+  <div class="card">
+    <div class="card-title"><span class="step-num">2</span> Libro de calificaciones (Excel de Moodle)</div>
+    <div class="drop-zone" id="dzXlsx" onclick="document.getElementById('inputXlsx').click()">
+      <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-1.5A1.125 1.125 0 0 1 18 18.375M20.625 4.5H3.375m17.25 0c.621 0 1.125.504 1.125 1.125M20.625 4.5h-1.5C18.504 4.5 18 5.004 18 5.625m3.75 0v1.5c0 .621-.504 1.125-1.125 1.125M3.375 4.5c-.621 0-1.125.504-1.125 1.125M3.375 4.5h1.5C5.496 4.5 6 5.004 6 5.625m-3.75 0v1.5c0 .621.504 1.125 1.125 1.125m0 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.5-3.75C5.496 8.25 6 7.746 6 7.125v-1.5M6 7.125v1.5c0 .621.504 1.125 1.125 1.125M6 7.125V6m0 2.25h13.5m-13.5 0c.621 0 1.125.504 1.125 1.125M19.5 9.375v1.5c0 .621-.504 1.125-1.125 1.125M19.5 9.375c0-.621-.504-1.125-1.125-1.125m1.125 2.625h-13.5"/></svg>
+      <p>Subir libro de calificaciones (.xlsx)</p>
+      <p style="font-size:12px; color:#aaa; margin-top:2px;">Exportado desde Moodle → Calificaciones</p>
+      <div class="filename" id="xlsxName" style="display:none"></div>
+    </div>
+    <input type="file" id="inputXlsx" accept=".xlsx,.xls" onchange="loadXlsx(this.files[0])">
+  </div>
+
+  <!-- PASO 3: EVALUAR -->
+  <div class="card">
+    <div class="card-title"><span class="step-num">3</span> Evaluar</div>
+    <div id="matchInfo" style="display:none; margin-bottom:12px;"></div>
+    <button class="btn btn-primary" id="btnEval" onclick="evaluateAll()" disabled>
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/></svg>
+      Evaluar todos los trabajos
+    </button>
+    <div id="progressArea" style="display:none; margin-top:12px;">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="progress-text" id="progressText">Iniciando...</div>
+    </div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div id="resultsSection" style="display:none">
+    <div class="summary-grid" id="summaryGrid"></div>
+    <div class="card">
+      <div class="results-header">
+        <div class="card-title" style="margin:0">Resultados</div>
+        <button class="btn btn-export" onclick="exportCSV()">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+          Exportar CSV
+        </button>
+      </div>
+      <div class="overflow-x">
+        <table id="resultsTable">
+          <thead>
+            <tr>
+              <th>Alumno</th>
+              <th>C1<br><span style="font-weight:400;font-size:11px">Articulación</span></th>
+              <th>C2<br><span style="font-weight:400;font-size:11px">Mediadora</span></th>
+              <th>C3<br><span style="font-weight:400;font-size:11px">Pens. comp.</span></th>
+              <th>C4<br><span style="font-weight:400;font-size:11px">Eval. form.</span></th>
+              <th>C5<br><span style="font-weight:400;font-size:11px">Mejoras</span></th>
+              <th>C6<br><span style="font-weight:400;font-size:11px">Cuestionarios</span></th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const GEMINI_KEY = 'AIzaSyCzI1TvLNIrwwHt8md0tRsqFEm4USmXhq0';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+
+const PUNTAJES = { excelente: 1.4, aprobado: 0.98, incompleto: 0 };
+const PUNTAJES_C6 = { excelente: 3, aprobado: 2.1, incompleto: 0 };
+
+const PROMPT = `Sos un evaluador de trabajos académicos del curso STEM y Robótica en ETP (formación docente técnica).
+
+Analizá el PDF adjunto y evaluá cada criterio. Para cada uno devolvé nivel y feedback de 1 oración.
+
+CRITERIOS:
+1. Articulación disciplinar (Pregunta 1):
+- excelente: identifica el tipo de articulación, explica posibilidades pedagógicas y señala limitaciones concretas.
+- aprobado: identifica la relación entre disciplinas pero con imprecisiones o de forma superficial.
+- incompleto: no identifica la articulación o la respuesta es confusa/irrelevante.
+
+2. Robótica mediadora vs. instrumental (Pregunta 2):
+- excelente: distingue con precisión ambos roles, los fundamenta con ejemplos del caso.
+- aprobado: menciona algún rol pero sin distinción clara o sin fundamento concreto.
+- incompleto: no distingue los roles o la respuesta es confusa.
+
+3. Pensamiento computacional (Pregunta 3):
+- excelente: identifica claramente aspectos desarrollados y limitados con argumentos pertinentes al caso.
+- aprobado: identifica algún aspecto pero con falta de precisión o sin justificación suficiente.
+- incompleto: no identifica aspectos del pensamiento computacional o los confunde.
+
+4. Evaluación formativa (Pregunta 4):
+- excelente: analiza los instrumentos, reconoce aportes y señala limitaciones concretas desde perspectiva formativa.
+- aprobado: menciona algún aporte o limitación pero de forma general o sin profundidad.
+- incompleto: no analiza los instrumentos o los comentarios son irrelevantes.
+
+5. Mejoras propuestas (Parte 2):
+- excelente: dos mejoras concretas, pertinentes, explican qué harían los estudiantes y justifican viabilidad en el aula.
+- aprobado: mejoras pertinentes pero poco desarrolladas o con justificación superficial en alguna.
+- incompleto: mejoras vagas, no pertinentes o sin justificación de viabilidad.
+
+Respondé SOLO con este JSON, sin texto adicional ni backticks:
+{"c1":{"nivel":"excelente|aprobado|incompleto","feedback":"..."},"c2":{"nivel":"excelente|aprobado|incompleto","feedback":"..."},"c3":{"nivel":"excelente|aprobado|incompleto","feedback":"..."},"c4":{"nivel":"excelente|aprobado|incompleto","feedback":"..."},"c5":{"nivel":"excelente|aprobado|incompleto","feedback":"..."}}`;
+
+let zipFiles = {};   // nombre_normalizado -> Uint8Array
+let calificaciones = {}; // nombre_normalizado -> { q1, q4, promedio, nivelC6, puntajeC6 }
+let results = [];
+
+function normalize(str) {
+  return str.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+// Extrae nombre del alumno de la ruta de Moodle: "Nombre Apellido_XXXXX_assignsubmission_file/..."
+function extractNameFromPath(path) {
+  const folder = path.split('/')[0];
+  const match = folder.match(/^(.+?)_\d+_assignsubmission_file$/);
+  return match ? match[1] : folder;
+}
+
+// ---- ZIP ----
+async function loadZip(file) {
+  if (!file) return;
+  const zip = await JSZip.loadAsync(file);
+  zipFiles = {};
+  for (const [path, entry] of Object.entries(zip.files)) {
+    if (entry.dir || !path.toLowerCase().endsWith('.pdf')) continue;
+    const nombre = extractNameFromPath(path);
+    const data = await entry.async('uint8array');
+    zipFiles[normalize(nombre)] = { nombre, data, path };
+  }
+  document.getElementById('dzZip').classList.add('loaded');
+  const zn = document.getElementById('zipName');
+  zn.style.display = 'block';
+  zn.textContent = `✓ ${Object.keys(zipFiles).length} PDFs cargados`;
+  checkReady();
+}
+
+// ---- XLSX ----
+function loadXlsx(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '-' });
+    calificaciones = {};
+    for (const row of rows) {
+      const apellido = String(row['Apellido(s)'] || '');
+      const nombre = String(row['Nombre'] || '');
+      const fullName = `${nombre} ${apellido}`.trim();
+      const q1raw = row['Cuestionario:Cuestionario Unidad 1 (Real)'];
+      const q4raw = row['Cuestionario:Cuestionario Unidad 4 (Real)'];
+      const q1 = parseFloat(q1raw) || null;
+      const q4 = parseFloat(q4raw) || null;
+      const vals = [q1, q4].filter(v => v !== null);
+      const promedio = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+      const nivelC6 = promedio === null ? 'incompleto' : promedio >= 9 ? 'excelente' : promedio >= 7 ? 'aprobado' : 'incompleto';
+      const puntajeC6 = PUNTAJES_C6[nivelC6];
+      calificaciones[normalize(fullName)] = { fullName, q1, q4, promedio, nivelC6, puntajeC6 };
+      // también indexar por apellido solo por si el match falla
+      calificaciones[normalize(apellido)] = calificaciones[normalize(apellido)] || { fullName, q1, q4, promedio, nivelC6, puntajeC6 };
+    }
+    document.getElementById('dzXlsx').classList.add('loaded');
+    const xn = document.getElementById('xlsxName');
+    xn.style.display = 'block';
+    xn.textContent = `✓ ${rows.length} alumnos cargados`;
+    checkReady();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function findCalificacion(nombreMoodle) {
+  const key = normalize(nombreMoodle);
+  if (calificaciones[key]) return calificaciones[key];
+  // fallback: buscar por coincidencia parcial
+  for (const [k, v] of Object.entries(calificaciones)) {
+    if (key.includes(k) || k.includes(key)) return v;
+  }
+  return null;
+}
+
+function checkReady() {
+  const hasZip = Object.keys(zipFiles).length > 0;
+  const hasXlsx = Object.keys(calificaciones).length > 0;
+  document.getElementById('btnEval').disabled = !(hasZip && hasXlsx);
+  if (hasZip && hasXlsx) showMatchInfo();
+}
+
+function showMatchInfo() {
+  let matched = 0, missing = [];
+  for (const [key, entry] of Object.entries(zipFiles)) {
+    const cal = findCalificacion(entry.nombre);
+    if (cal) matched++;
+    else missing.push(entry.nombre);
+  }
+  const div = document.getElementById('matchInfo');
+  div.style.display = 'block';
+  div.innerHTML = `<div class="alert">
+    <strong>Match automático:</strong> ${matched}/${Object.keys(zipFiles).length} PDFs emparejados con el libro de calificaciones.
+    ${missing.length ? `<details style="margin-top:6px"><summary>${missing.length} sin emparejar (cuestionarios = 0)</summary><div style="margin-top:4px">${missing.map(n=>`<span class="tag">${n}</span>`).join('')}</div></details>` : ''}
+  </div>`;
+}
+
+// ---- EVALUACIÓN ----
+function toBase64(uint8array) {
+  let binary = '';
+  for (let i = 0; i < uint8array.length; i++) binary += String.fromCharCode(uint8array[i]);
+  return btoa(binary);
+}
+
+function nivelLabel(n) {
+  return { excelente: 'Excelente', aprobado: 'Aprobado', incompleto: 'Incompleto', noentrego: 'No entregó' }[n] || n;
+}
+
+function calcTotal(criterios, puntajeC6) {
+  let t = puntajeC6;
+  for (const c of ['c1','c2','c3','c4','c5']) t += PUNTAJES[criterios[c].nivel] || 0;
+  return Math.round(t * 100) / 100;
+}
+
+function nivelFinal(total) {
+  if (total >= 9) return 'excelente';
+  if (total >= 7) return 'aprobado';
+  return 'incompleto';
+}
+
+async function evaluateAll() {
+  const btn = document.getElementById('btnEval');
+  btn.disabled = true;
+  btn.innerHTML = 'Evaluando...';
+  results = [];
+
+  const entries = Object.values(zipFiles);
+  const total = entries.length;
+  document.getElementById('progressArea').style.display = 'block';
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('resultsBody').innerHTML = '';
+
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    document.getElementById('progressFill').style.width = `${Math.round((i/total)*100)}%`;
+    document.getElementById('progressText').textContent = `Evaluando ${i+1} de ${total}: ${entry.nombre}...`;
+
+    const cal = findCalificacion(entry.nombre);
+    const puntajeC6 = cal ? cal.puntajeC6 : 0;
+    const nivelC6 = cal ? cal.nivelC6 : 'incompleto';
+    const promedio = cal ? cal.promedio : null;
+
+    try {
+      const b64 = toBase64(entry.data);
+      const body = {
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: 'application/pdf', data: b64 } },
+            { text: PROMPT }
+          ]
+        }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 800 }
+      };
+
+      const resp = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await resp.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      const clean = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      const t = calcTotal(parsed, puntajeC6);
+      results.push({ nombre: entry.nombre, criterios: parsed, nivelC6, puntajeC6, promedio, total: t, nivel: nivelFinal(t), matched: !!cal });
+    } catch(e) {
+      const fallback = { c1:{nivel:'incompleto',feedback:'Error al evaluar'}, c2:{nivel:'incompleto',feedback:''}, c3:{nivel:'incompleto',feedback:''}, c4:{nivel:'incompleto',feedback:''}, c5:{nivel:'incompleto',feedback:''} };
+      results.push({ nombre: entry.nombre, criterios: fallback, nivelC6, puntajeC6, promedio, total: puntajeC6, nivel: nivelFinal(puntajeC6), matched: !!cal, error: true });
+    }
+
+    // pequeña pausa para no saturar la API
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  document.getElementById('progressFill').style.width = '100%';
+  document.getElementById('progressText').textContent = `✓ ${total} trabajos evaluados`;
+
+  renderResults();
+  btn.disabled = false;
+  btn.innerHTML = 'Volver a evaluar';
+}
+
+function renderResults() {
+  document.getElementById('resultsSection').style.display = 'block';
+
+  // summary
+  const exc = results.filter(r => r.nivel === 'excelente').length;
+  const apr = results.filter(r => r.nivel === 'aprobado').length;
+  const inc = results.filter(r => r.nivel === 'incompleto').length;
+  const prom = results.reduce((a, b) => a + b.total, 0) / results.length;
+  document.getElementById('summaryGrid').innerHTML = `
+    <div class="summary-card"><div class="num">${results.length}</div><div class="lbl">Evaluados</div></div>
+    <div class="summary-card"><div class="num score-excelente">${exc}</div><div class="lbl">Excelente</div></div>
+    <div class="summary-card"><div class="num score-aprobado">${apr}</div><div class="lbl">Aprobado</div></div>
+    <div class="summary-card"><div class="num score-incompleto">${inc}</div><div class="lbl">Incompleto</div></div>
+  `;
+
+  // tabla
+  const tbody = document.getElementById('resultsBody');
+  tbody.innerHTML = results.map(r => {
+    const crits = ['c1','c2','c3','c4','c5'].map(c => {
+      const v = r.criterios[c];
+      const pts = (PUNTAJES[v.nivel] || 0).toFixed(2);
+      return `<td><span class="badge badge-${v.nivel}" title="${v.feedback}">${pts}</span><br><span class="feedback-cell" style="display:none">${v.feedback}</span></td>`;
+    }).join('');
+    const promDisp = r.promedio !== null ? r.promedio.toFixed(1) : '—';
+    const nf = r.nivel;
+    return `<tr>
+      <td><strong>${r.nombre}</strong><br><span class="match-indicator ${r.matched ? 'match-ok' : 'match-miss'}">${r.matched ? '✓ emparejado' : '⚠ sin match'}</span></td>
+      ${crits}
+      <td><span class="badge badge-${r.nivelC6}">${r.puntajeC6.toFixed(2)}</span><br><span style="font-size:11px;color:#666">prom. ${promDisp}</span></td>
+      <td><span class="score score-${nf}">${r.total.toFixed(2)}</span><br><span class="badge badge-${nf}" style="margin-top:3px">${nivelLabel(nf)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function exportCSV() {
+  if (!results.length) return;
+  const headers = ['Alumno','C1 Articulación (pts)','C1 Nivel','C1 Feedback','C2 Mediadora (pts)','C2 Nivel','C2 Feedback','C3 Pensamiento comp. (pts)','C3 Nivel','C3 Feedback','C4 Eval. formativa (pts)','C4 Nivel','C4 Feedback','C5 Mejoras (pts)','C5 Nivel','C5 Feedback','C6 Cuestionarios (pts)','C6 Nivel','C6 Promedio','Total','Nivel final'];
+  const rows = results.map(r => {
+    const cs = ['c1','c2','c3','c4','c5'].flatMap(c => [
+      (PUNTAJES[r.criterios[c].nivel]||0).toFixed(2),
+      nivelLabel(r.criterios[c].nivel),
+      r.criterios[c].feedback
+    ]);
+    return [
+      r.nombre,
+      ...cs,
+      r.puntajeC6.toFixed(2),
+      nivelLabel(r.nivelC6),
+      r.promedio !== null ? r.promedio.toFixed(1) : '',
+      r.total.toFixed(2),
+      nivelLabel(r.nivel)
+    ];
+  });
+  const csv = [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'resultados_stem_robotica.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Drag & drop
+['dzZip','dzXlsx'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+  el.addEventListener('drop', e => {
+    e.preventDefault(); el.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (id === 'dzZip') loadZip(f); else loadXlsx(f);
+  });
+});
+</script>
+</body>
+</html>
